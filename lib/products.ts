@@ -1,0 +1,58 @@
+import { Product } from "@/types/product";
+
+export const products: Product[] = [
+  {
+    id: "1",
+    name: "Chocolate Cake",
+    description: "Rich and moist chocolate cake with chocolate frosting.",
+    price: 25,
+    image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400",
+    category: "Cakes",
+    flavors: ["Chocolate", "Vanilla"],
+    sizes: ["6 inch", "8 inch", "10 inch"],
+  },
+  {
+    id: "2",
+    name: "Vanilla Cupcakes",
+    description: "Classic vanilla cupcakes with buttercream frosting.",
+    price: 3,
+    image: "https://images.unsplash.com/photo-1587668178277-295251f900ce?w=400",
+    category: "Cupcakes",
+    flavors: ["Vanilla", "Strawberry"],
+  },
+  {
+    id: "3",
+    name: "Chocolate Chip Cookies",
+    description: "Chewy chocolate chip cookies baked fresh daily.",
+    price: 2,
+    image: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?w=400",
+    category: "Cookies",
+  },
+  {
+    id: "4",
+    name: "Strawberry Cheesecake",
+    description: "Creamy cheesecake topped with fresh strawberries.",
+    price: 30,
+    image: "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=400",
+    category: "Cakes",
+    sizes: ["8 inch", "10 inch"],
+  },
+  {
+    id: "5",
+    name: "Red Velvet Cake",
+    description: "Moist red velvet cake with cream cheese frosting.",
+    price: 28,
+    image: "https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=400",
+    category: "Cakes",
+    sizes: ["6 inch", "8 inch"],
+  },
+  {
+    id: "6",
+    name: "Macarons",
+    description: "French macarons in various flavors.",
+    price: 2.5,
+    image: "https://images.unsplash.com/photo-1558326567-98ae2405596b?w=400",
+    category: "Pastries",
+    flavors: ["Pistachio", "Raspberry", "Lemon"],
+  },
+];

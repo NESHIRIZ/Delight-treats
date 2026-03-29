@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+:root {
+  /* Delight Treats theme */
+  --background: #fef7f0; /* cream white */
+  --foreground: #1f2937; /* slate-800 */
+
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+
+  --muted: #fce7f3; /* light pink */
+  --muted-foreground: #475569; /* slate-600 */
+
+  --primary: #ec4899; /* pink-500 */
+  --primary-foreground: #ffffff;
+
+  --secondary: #92400e; /* chocolate brown */
+  --secondary-foreground: #ffffff;
+
+  --border: #e2e8f0; /* slate-200 */
+  --input: #e2e8f0;
+  --ring: #ec4899; /* pink-500 */
+
+  --radius: 0.85rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* EventHive "Aurora" theme (dark) */
+    --background: #070b14; /* deep navy */
+    --foreground: #e5e7eb; /* zinc-200 */
+
+    --card: #0b1220;
+    --card-foreground: #e5e7eb;
+
+    --muted: #0f172a;
+    --muted-foreground: #94a3b8; /* slate-400 */
+
+    --primary: #c084fc; /* violet-300 */
+    --primary-foreground: #0b0a1e;
+
+    --secondary: #ec4899; /* pink-500 */
+    --secondary-foreground: #0b0a1e;
+
+    --border: #1f2a44;
+    --input: #1f2a44;
+    --ring: #5eead4;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-outfit), ui-sans-serif, system-ui, -apple-system,
+      "Segoe UI", Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  a {
+    text-underline-offset: 4px;
+  }
+}
