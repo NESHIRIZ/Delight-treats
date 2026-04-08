@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: delight-treats
+    runtime: node
+    branch: main
+    plan: starter
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: JWT_SECRET
+        value: ""
+      - key: GOOGLE_CLIENT_ID
+        value: ""
+      - key: GOOGLE_CLIENT_SECRET
+        value: ""
+      - key: GOOGLE_REDIRECT_URI
+        value: ""
+      - key: SQLITE_DB_PATH
+        value: ""
