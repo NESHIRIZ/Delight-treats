@@ -47,125 +47,116 @@ declare global {
   var __eventhiveDb: DatabaseSync | undefined;
 }
 
-const db = globalThis.__eventhiveDb ?? new DatabaseSync(dbPath);
+let db: DatabaseSync | undefined;
 
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__eventhiveDb = db;
+function initDb() {
+  const connection = new DatabaseSync(dbPath);
+  connection.exec("PRAGMA journal_mode = WAL");
+  connection.exec("PRAGMA busy_timeout = 5000");
+
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS organizer_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      headline TEXT NOT NULL,
+      body TEXT NOT NULL,
+      example TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_published INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      location TEXT,
+      description TEXT,
+      organizer_id INTEGER NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (organizer_id) REFERENCES users(id)
+    )
+  `);
+
+  connection.exec(`
+    CREATE TABLE IF NOT EXISTS guests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      rsvp_status TEXT NOT NULL DEFAULT 'Pending',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    )
+  `);
+
+  if (process.env.NODE_ENV !== "production") {
+    globalThis.__eventhiveDb = connection;
+  }
+
+  return connection;
 }
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
+function getDb() {
+  if (!db) {
+    db = initDb();
+  }
+  return db;
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS organizer_cards (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    headline TEXT NOT NULL,
-    body TEXT NOT NULL,
-    example TEXT,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_published INTEGER NOT NULL DEFAULT 1,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    date TEXT NOT NULL,
-    location TEXT,
-    description TEXT,
-    organizer_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (organizer_id) REFERENCES users(id)
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS guests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    rsvp_status TEXT NOT NULL DEFAULT 'Pending',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
-  )
-`);
-
-const insertUserStmt = db.prepare(`
-  INSERT INTO users (name, email, password_hash)
-  VALUES (?, ?, ?)
-`);
-
-const selectByEmailStmt = db.prepare(`
-  SELECT id, name, email, password_hash, created_at
-  FROM users
-  WHERE email = ?
-`);
-
-const selectByIdStmt = db.prepare(`
-  SELECT id, name, email, password_hash, created_at
-  FROM users
-  WHERE id = ?
-`);
-
-const selectPublishedOrganizerCardsStmt = db.prepare(`
-  SELECT id, headline, body, example, sort_order, is_published, updated_at
-  FROM organizer_cards
-  WHERE is_published = 1
-  ORDER BY sort_order ASC, id ASC
-`);
+function prepare(sql: string) {
+  return getDb().prepare(sql);
+}
 
 export function createUser(input: {
   name: string;
   email: string;
   passwordHash: string;
 }) {
-  const result = insertUserStmt.run(input.name, input.email, input.passwordHash);
+  const result = prepare(`
+    INSERT INTO users (name, email, password_hash)
+    VALUES (?, ?, ?)
+  `).run(input.name, input.email, input.passwordHash);
   return Number(result.lastInsertRowid);
 }
 
 export function getUserByEmail(email: string) {
-  return selectByEmailStmt.get(email) as UserRecord | undefined;
+  return prepare(`
+    SELECT id, name, email, password_hash, created_at
+    FROM users
+    WHERE email = ?
+  `).get(email) as UserRecord | undefined;
 }
 
 export function getUserById(id: number) {
-  return selectByIdStmt.get(id) as UserRecord | undefined;
+  return prepare(`
+    SELECT id, name, email, password_hash, created_at
+    FROM users
+    WHERE id = ?
+  `).get(id) as UserRecord | undefined;
 }
 
 export function getPublishedOrganizerCards() {
-  return selectPublishedOrganizerCardsStmt.all() as OrganizerCardRecord[];
+  return prepare(`
+    SELECT id, headline, body, example, sort_order, is_published, updated_at
+    FROM organizer_cards
+    WHERE is_published = 1
+    ORDER BY sort_order ASC, id ASC
+  `).all() as OrganizerCardRecord[];
 }
 
 // ── Events ──────────────────────────────────────────────────────────────────
-
-const insertEventStmt = db.prepare(`
-  INSERT INTO events (name, date, location, description, organizer_id)
-  VALUES (?, ?, ?, ?, ?)
-`);
-
-const selectEventByIdStmt = db.prepare(`
-  SELECT id, name, date, location, description, organizer_id, created_at
-  FROM events WHERE id = ?
-`);
-
-const selectAllEventsStmt = db.prepare(`
-  SELECT id, name, date, location, description, organizer_id, created_at
-  FROM events ORDER BY date ASC
-`);
-
-const selectEventsByOrganizerStmt = db.prepare(`
-  SELECT id, name, date, location, description, organizer_id, created_at
-  FROM events WHERE organizer_id = ? ORDER BY date ASC
-`);
 
 export function createEvent(input: {
   name: string;
@@ -174,84 +165,84 @@ export function createEvent(input: {
   description?: string;
   organizer_id: number;
 }) {
-  const result = insertEventStmt.run(
+  const result = prepare(`
+    INSERT INTO events (name, date, location, description, organizer_id)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
     input.name,
     input.date,
     input.location ?? null,
     input.description ?? null,
-    input.organizer_id
+    input.organizer_id,
   );
   return Number(result.lastInsertRowid);
 }
 
 export function getEventById(id: number) {
-  return selectEventByIdStmt.get(id) as EventRecord | undefined;
+  return prepare(`
+    SELECT id, name, date, location, description, organizer_id, created_at
+    FROM events WHERE id = ?
+  `).get(id) as EventRecord | undefined;
 }
 
 export function getAllEvents() {
-  return selectAllEventsStmt.all() as EventRecord[];
+  return prepare(`
+    SELECT id, name, date, location, description, organizer_id, created_at
+    FROM events ORDER BY date ASC
+  `).all() as EventRecord[];
 }
 
 export function getEventsByOrganizer(organizerId: number) {
-  return selectEventsByOrganizerStmt.all(organizerId) as EventRecord[];
+  return prepare(`
+    SELECT id, name, date, location, description, organizer_id, created_at
+    FROM events WHERE organizer_id = ? ORDER BY date ASC
+  `).all(organizerId) as EventRecord[];
 }
-
-const updateEventStmt = db.prepare(`
-  UPDATE events SET name = ?, date = ?, location = ?, description = ?
-  WHERE id = ?
-`);
-
-const deleteEventStmt = db.prepare(`
-  DELETE FROM events WHERE id = ?
-`);
-
-const deleteGuestsByEventStmt = db.prepare(`
-  DELETE FROM guests WHERE event_id = ?
-`);
 
 export function updateEvent(
   id: number,
-  input: { name: string; date: string; location?: string; description?: string }
+  input: { name: string; date: string; location?: string; description?: string },
 ) {
-  updateEventStmt.run(
+  prepare(`
+    UPDATE events SET name = ?, date = ?, location = ?, description = ?
+    WHERE id = ?
+  `).run(
     input.name,
     input.date,
     input.location ?? null,
     input.description ?? null,
-    id
+    id,
   );
 }
 
 export function deleteEvent(id: number) {
-  deleteGuestsByEventStmt.run(id);
-  deleteEventStmt.run(id);
+  prepare(`
+    DELETE FROM guests WHERE event_id = ?
+  `).run(id);
+  prepare(`
+    DELETE FROM events WHERE id = ?
+  `).run(id);
 }
 
 // ── Guests ───────────────────────────────────────────────────────────────────
 
-const insertGuestStmt = db.prepare(`
-  INSERT INTO guests (event_id, name, email)
-  VALUES (?, ?, ?)
-`);
-
-const selectGuestsByEventStmt = db.prepare(`
-  SELECT id, event_id, name, email, rsvp_status, created_at
-  FROM guests WHERE event_id = ? ORDER BY created_at ASC
-`);
-
-const deleteGuestStmt = db.prepare(`
-  DELETE FROM guests WHERE id = ?
-`);
-
 export function addGuest(input: { event_id: number; name: string; email: string }) {
-  const result = insertGuestStmt.run(input.event_id, input.name, input.email);
+  const result = prepare(`
+    INSERT INTO guests (event_id, name, email)
+    VALUES (?, ?, ?)
+  `).run(input.event_id, input.name, input.email);
   return Number(result.lastInsertRowid);
 }
 
 export function getGuestsByEventId(eventId: number) {
-  return selectGuestsByEventStmt.all(eventId) as GuestRecord[];
+  return prepare(`
+    SELECT id, event_id, name, email, rsvp_status, created_at
+    FROM guests WHERE event_id = ? ORDER BY created_at ASC
+  `).all(eventId) as GuestRecord[];
 }
 
 export function deleteGuest(id: number) {
-  deleteGuestStmt.run(id);
+  prepare(`
+    DELETE FROM guests WHERE id = ?
+  `).run(id);
 }
