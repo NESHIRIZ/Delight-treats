@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { GoogleIcon } from "../components/icons";
 
 type SessionUser = {
   id: number;
@@ -17,34 +16,12 @@ function getDashboardHref(role: string | null) {
     : "/dashboard";
 }
 
-function getGoogleOauthErrorCopy(code: string | null) {
-  if (!code) return null;
-
-  const errorCopy: Record<string, string> = {
-    cancelled: "Google sign-in was cancelled. Please try again.",
-    not_configured: "Google sign-in is not available right now.",
-    state_mismatch: "Google sign-in expired. Please try again.",
-    missing_params: "Google sign-in failed. Please try again.",
-    token_exchange_failed: "Google sign-in failed. Please try again.",
-    missing_id_token: "Google sign-in failed. Please try again.",
-    invalid_id_token: "Google sign-in failed. Please try again.",
-    email_not_verified: "Please verify your Google email address and try again.",
-    user_create_failed: "We could not sign you in. Please try again.",
-  };
-
-  return errorCopy[code] ?? "Google sign-in failed. Please try again.";
-}
-
 export function SigninClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const oauthError = searchParams.get("oauth");
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(() =>
-    getGoogleOauthErrorCopy(oauthError),
-  );
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [oauthSubmitting, setOauthSubmitting] = useState(false);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
 
   const showRegisteredNotice = searchParams.get("registered") === "1";
@@ -109,17 +86,6 @@ export function SigninClient() {
     router.push(getDashboardHref(searchParams.get("role")));
   }
 
-  function handleGoogleSignin() {
-    setOauthSubmitting(true);
-
-    const role = searchParams.get("role");
-    const destination = role
-      ? `/api/auth/google?role=${encodeURIComponent(role)}`
-      : "/api/auth/google";
-
-    window.location.assign(destination);
-  }
-
   return (
     <div className="mx-auto max-w-lg rounded-2xl border border-border bg-card p-6 md:p-8">
       <h1 className="font-heading text-3xl font-semibold tracking-tight">
@@ -136,25 +102,6 @@ export function SigninClient() {
       ) : null}
 
       <div className="mt-6 space-y-4">
-        <button
-          type="button"
-          onClick={handleGoogleSignin}
-          disabled={submitting || oauthSubmitting}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold transition hover:bg-muted disabled:opacity-70"
-        >
-          <GoogleIcon className="h-5 w-5" />
-          {oauthSubmitting ? "Connecting..." : "Continue with Google"}
-        </button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center" aria-hidden="true">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center">
-            <span className="bg-card px-2 text-xs text-muted-foreground">or</span>
-          </div>
-        </div>
-
         <form className="space-y-4" onSubmit={handleSubmit}>
           <label className="block space-y-2">
             <span className="text-sm font-medium">Email</span>
@@ -178,7 +125,7 @@ export function SigninClient() {
 
           <button
             type="submit"
-            disabled={submitting || oauthSubmitting}
+            disabled={submitting}
             className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-70"
           >
             {submitting ? "Signing in..." : "Sign in"}
